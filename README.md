@@ -1,7 +1,27 @@
 # Crawling Bot V2 - PlatformIO Migration
 
+[![PlatformIO](https://img.shields.io/badge/PlatformIO-ESP32-orange.svg)](https://platformio.org/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+
+## 📋 Table of Contents
+- [Overview](#overview)
+- [Hardware Changes](#hardware-changes)
+- [Architecture](#architecture)
+- [Pin Configuration](#pin-configuration)
+- [Dependencies](#dependencies)
+- [Building and Uploading](#building-and-uploading)
+- [Documentation](#documentation)
+- [Quick Links](#quick-links)
+
 ## Overview
 This is the PlatformIO version of the crawling bot, migrated from the original Arduino code. The code has been restructured with a clean, library-based architecture for better maintainability and modularity.
+
+**Key Features:**
+- 🖥️ OLED display with 128x64 resolution
+- 🧭 9-DOF AHRS sensor (MPU9250)
+- 🎮 Smooth servo control
+- 📡 WiFi AP and OTA updates
+- 🤖 Ready for reinforcement learning
 
 ## Hardware Changes
 - **Display**: Migrated from LCD 16x2 (I2C) to OLED 0.96" SSD1306 display
@@ -182,6 +202,48 @@ Changes from original Arduino code:
 - ✅ Improved code organization and maintainability
 - ⏳ Training/Learning (template ready for implementation)
 
+## Documentation
+
+This project includes comprehensive documentation:
+
+### 📚 Quick Links
+
+| Document | Description |
+|----------|-------------|
+| [QUICKSTART.md](QUICKSTART.md) | Get started in 5 minutes |
+| [BUILD.md](BUILD.md) | Detailed build and deployment guide |
+| [MIGRATION.md](MIGRATION.md) | Migration guide from Arduino to PlatformIO |
+| [EXAMPLES.md](EXAMPLES.md) | Code examples for all libraries |
+| [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) | Complete project overview |
+
+### 📊 Project Statistics
+
+- **Code**: ~923 lines (C++/Arduino)
+- **Documentation**: ~1,373 lines (Markdown)
+- **Libraries**: 5 modular components
+- **Examples**: 15+ code snippets
+
+## Contributing
+
+Contributions are welcome! Please:
+1. Follow the existing code structure
+2. Keep libraries independent and focused
+3. Update documentation for any API changes
+4. Add examples for new features
+5. Test on actual hardware
+
 ## License
 
 [Specify your license here]
+
+## Credits
+
+- **Original Arduino Code**: amirali-lll
+- **PlatformIO Migration**: GitHub Copilot
+- **Libraries**: Adafruit, hideakitai, madhephaestus
+
+---
+
+**Status**: ✅ Migration Complete - Ready for Hardware Testing  
+**Version**: 2.0  
+**Last Updated**: December 2025
