@@ -7,6 +7,10 @@ AHRS::AHRS() : initialized(false), calibrated(false),
     mpu = new MPU9250();
 }
 
+AHRS::~AHRS() {
+    delete mpu;
+}
+
 bool AHRS::begin() {
     Wire.begin();
     

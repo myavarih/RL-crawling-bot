@@ -9,6 +9,7 @@
 class Display {
 public:
     Display();
+    ~Display();
     void begin();
     void clear();
     void print(const char* text, uint8_t x = 0, uint8_t y = 0);

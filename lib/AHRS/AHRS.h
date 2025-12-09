@@ -8,6 +8,7 @@
 class AHRS {
 public:
     AHRS();
+    ~AHRS();
     bool begin();
     void update();
     

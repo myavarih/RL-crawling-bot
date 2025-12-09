@@ -13,7 +13,7 @@ const uint8_t SERVO_PIN_UP = 33;
 Display display;
 AHRS ahrs;
 ServoControl servoControl(SERVO_PIN_DOWN, SERVO_PIN_UP);
-Network* network;
+Network* network;  // Heap allocation needed for initialization order with display
 Training training;
 
 void healthCheck() {

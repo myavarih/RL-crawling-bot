@@ -52,7 +52,7 @@ void Network::setupOTA() {
     });
     
     ArduinoOTA.onProgress([this](unsigned int progress, unsigned int total) {
-        uint8_t percentage = (progress / (total / 100));
+        uint8_t percentage = total > 0 ? (progress * 100 / total) : 0;
         Serial.printf("Progress: %u%%\r", percentage);
         if (display) {
             display->drawProgressBar(percentage);

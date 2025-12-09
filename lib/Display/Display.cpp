@@ -4,6 +4,10 @@ Display::Display() : cursorX(0), cursorY(0) {
     oled = new Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 }
 
+Display::~Display() {
+    delete oled;
+}
+
 void Display::begin() {
     if(!oled->begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS)) {
         Serial.println(F("SSD1306 allocation failed"));

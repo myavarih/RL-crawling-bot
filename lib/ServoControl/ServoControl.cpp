@@ -64,5 +64,7 @@ void ServoControl::moveServoSmooth(Servo &servo, int &currentAngle, int targetAn
             delay(stepDelay);
         }
     }
+    // Ensure we reach the exact target angle
+    servo.write(targetAngle);
     currentAngle = targetAngle;
 }
