@@ -24,9 +24,7 @@ private:
     uint8_t pinUp;
     int currentDownAngle;
     int currentUpAngle;
-    
-    static const int MIN_PULSE_WIDTH = 600;
-    static const int MAX_PULSE_WIDTH = 2400;
+
     static const int INITIAL_DOWN_ANGLE = 0;
     static const int INITIAL_UP_ANGLE = 180;
     
