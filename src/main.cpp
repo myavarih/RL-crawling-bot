@@ -78,6 +78,33 @@ void setup()
     // Run health check
     healthCheck.run();
 
+    // Phase 1 demo: Hello World + bye-bye wave
+    display.clear();
+    display.setCursor(0, 0);
+    display.print("Hello World");
+    display.setCursor(0, 16);
+    display.print("Phase 1");
+    display.refresh();
+    delay(1500);
+
+    display.clear();
+    display.setCursor(0, 0);
+    display.print("Bye-bye");
+    display.setCursor(0, 16);
+    display.print("Waving...");
+    display.refresh();
+
+    servoControl.moveUpSmooth(90, 8);
+    for (uint8_t i = 0; i < 3; ++i)
+    {
+        servoControl.moveUpSmooth(120, 8);
+        delay(120);
+        servoControl.moveUpSmooth(60, 8);
+        delay(120);
+    }
+    servoControl.moveUpSmooth(90, 8);
+    delay(500);
+
     // Reset measurement for interval tracking
     ahrs.resetMeasurement();
 }
