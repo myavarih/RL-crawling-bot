@@ -69,6 +69,7 @@ void setup()
 
     // Initialize Training
     training.begin();
+    training.startTraining();
 
     // Setup complete
     display.clear();
@@ -188,9 +189,6 @@ void loop()
 
         display.refresh();
 
-        // Reset for next measurement
-        ahrs.resetMeasurement();
-
         // Print to serial for debugging
         Serial.print("Distance: ");
         Serial.print(measurement.deltaDistance);
@@ -199,6 +197,37 @@ void loop()
         Serial.print(" cm/s, Accel: ");
         Serial.print(measurement.avgAcceleration);
         Serial.println(" m/s2");
+
+        if (training.isTraining())
+        {
+            Training::StepResult stepResult = training.step(
+                measurement.deltaDistance,
+                measurement.avgSpeed,
+                measurement.avgAcceleration,
+                servoControl.getCurrentDownAngle(),
+                servoControl.getCurrentUpAngle());
+
+            Serial.print("Action: ");
+            Serial.print(stepResult.actionIndex);
+            Serial.print(" dDown: ");
+            Serial.print(stepResult.deltaDown);
+            Serial.print(" dUp: ");
+            Serial.print(stepResult.deltaUp);
+            Serial.print(" reward: ");
+            Serial.println(stepResult.reward, 4);
+
+            // Reset before applying next action so movement is measured in the next interval.
+            ahrs.resetMeasurement();
+
+            int targetDown = servoControl.getCurrentDownAngle() + stepResult.deltaDown;
+            int targetUp = servoControl.getCurrentUpAngle() + stepResult.deltaUp;
+            servoControl.moveDownSmooth(targetDown);
+            servoControl.moveUpSmooth(targetUp);
+        }
+        else
+        {
+            ahrs.resetMeasurement();
+        }
     }
 
     // TODO: Implement main loop logic
