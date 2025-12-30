@@ -153,7 +153,7 @@ void loop()
     static unsigned long lastMeasurement = 0;
     unsigned long currentTime = millis();
 
-    if (currentTime - lastMeasurement >= 2000)
+    if (currentTime - lastMeasurement >= 500)
     { // Every 2 seconds
         lastMeasurement = currentTime;
 
