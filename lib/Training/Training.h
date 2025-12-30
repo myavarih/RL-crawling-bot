@@ -39,7 +39,9 @@ private:
 
     static constexpr float kAlpha = 0.1f;
     static constexpr float kGamma = 0.9f;
-    static constexpr float kEpsilon = 0.1f;
+    static constexpr float kEpsilonStart = 1.0f;
+    static constexpr float kEpsilonMin = 0.1f;
+    static constexpr float kEpsilonDecay = 0.9995f;
 
     static constexpr float kDistScale = 10.0f;
     static constexpr float kSpeedScale = 10.0f;
@@ -54,6 +56,7 @@ private:
     bool modelLoaded;
     bool hasLastStep;
     int lastAction;
+    float currentEpsilon;
     float lastFeatures[kNumFeatures];
     float weights[kNumActions][kNumFeatures];
 
@@ -64,6 +67,7 @@ private:
     float computeQ(int actionIndex, const float *features) const;
     float computeMaxQ(const float *features) const;
     int selectAction(const float *features);
+    void decayEpsilon();
     void decodeAction(int actionIndex, int &deltaDown, int &deltaUp) const;
     float computeReward(float deltaDistanceCm, float avgSpeedCms, float avgAccelerationMps2) const;
 };

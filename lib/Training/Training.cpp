@@ -3,7 +3,12 @@
 
 const int Training::kDeltaOptions[Training::kDeltaCount] = { -40, -15, 0, 15, 40 };
 
-Training::Training() : trainingActive(false), modelLoaded(false), hasLastStep(false), lastAction(0)
+Training::Training()
+    : trainingActive(false),
+      modelLoaded(false),
+      hasLastStep(false),
+      lastAction(0),
+      currentEpsilon(kEpsilonStart)
 {
     resetWeights();
 }
@@ -20,6 +25,7 @@ void Training::startTraining()
     Serial.println("Training started");
     trainingActive = true;
     hasLastStep = false;
+    currentEpsilon = kEpsilonStart;
 }
 
 void Training::stopTraining()
@@ -67,6 +73,7 @@ Training::StepResult Training::step(float deltaDistanceCm, float avgSpeedCms, fl
     int deltaDown = 0;
     int deltaUp = 0;
     decodeAction(actionIndex, deltaDown, deltaUp);
+    decayEpsilon();
 
     memcpy(lastFeatures, features, sizeof(lastFeatures));
     lastAction = actionIndex;
@@ -181,7 +188,7 @@ float Training::computeMaxQ(const float *features) const
 int Training::selectAction(const float *features)
 {
     int roll = random(0, 10000);
-    if (roll < static_cast<int>(kEpsilon * 10000.0f))
+    if (roll < static_cast<int>(currentEpsilon * 10000.0f))
     {
         return random(0, kNumActions);
     }
@@ -199,6 +206,18 @@ int Training::selectAction(const float *features)
     }
 
     return bestAction;
+}
+
+void Training::decayEpsilon()
+{
+    if (currentEpsilon > kEpsilonMin)
+    {
+        currentEpsilon *= kEpsilonDecay;
+        if (currentEpsilon < kEpsilonMin)
+        {
+            currentEpsilon = kEpsilonMin;
+        }
+    }
 }
 
 void Training::decodeAction(int actionIndex, int &deltaDown, int &deltaUp) const
