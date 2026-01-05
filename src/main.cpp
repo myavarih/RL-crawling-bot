@@ -154,38 +154,63 @@ void loop()
     unsigned long currentTime = millis();
 
     if (currentTime - lastMeasurement >= 500)
-    { // Every 2 seconds
+    { // Every 0.5 seconds
         lastMeasurement = currentTime;
 
         // Get measurement data
         AHRS::MovementSnapshot measurement = ahrs.getMeasurement();
+        bool actionChosen = false;
+        Training::StepResult stepResult = {};
+
+        if (training.isTraining())
+        {
+            stepResult = training.step(
+                measurement.deltaDistance,
+                measurement.avgSpeed,
+                measurement.avgAcceleration,
+                servoControl.getCurrentDownAngle(),
+                servoControl.getCurrentUpAngle());
+            actionChosen = true;
+        }
 
         // Display the interval data
         display.clear();
+        const uint8_t lineHeight = 10;
 
         // Line 1: Distance moved in interval (cm)
         display.setCursor(0, 0);
         display.print("Dist: ");
-        display.print(measurement.deltaDistance, 1);
+        display.print(String(measurement.deltaDistance, 1));
         display.print(" cm");
 
         // Line 2: Average speed in interval (cm/s)
-        display.setCursor(1, 0);
+        display.setCursor(0, lineHeight);
         display.print("Spd: ");
-        display.print(measurement.avgSpeed, 1);
+        display.print(String(measurement.avgSpeed, 1));
         display.print(" cm/s");
 
         // Line 3: Average acceleration in interval (m/s^2)
-        display.setCursor(2, 0);
+        display.setCursor(0, lineHeight * 2);
         display.print("Acc: ");
-        display.print(measurement.avgAcceleration, 2);
+        display.print(String(measurement.avgAcceleration, 2));
         display.print(" m/s2");
 
         // Line 4: Time interval
-        display.setCursor(3, 0);
+        display.setCursor(0, lineHeight * 3);
         display.print("Time: ");
-        display.print(measurement.deltaTime, 1);
+        display.print(String(measurement.deltaTime, 1));
         display.print(" s");
+
+        if (actionChosen)
+        {
+            display.setCursor(0, lineHeight * 4);
+            display.print("Act: ");
+            display.print(stepResult.actionIndex);
+
+            display.setCursor(0, lineHeight * 5);
+            display.print("Reward: ");
+            display.print(String(stepResult.reward, 3));
+        }
 
         display.refresh();
 
@@ -198,15 +223,8 @@ void loop()
         Serial.print(measurement.avgAcceleration);
         Serial.println(" m/s2");
 
-        if (training.isTraining())
+        if (actionChosen)
         {
-            Training::StepResult stepResult = training.step(
-                measurement.deltaDistance,
-                measurement.avgSpeed,
-                measurement.avgAcceleration,
-                servoControl.getCurrentDownAngle(),
-                servoControl.getCurrentUpAngle());
-
             Serial.print("Action: ");
             Serial.print(stepResult.actionIndex);
             Serial.print(" dDown: ");

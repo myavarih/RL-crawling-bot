@@ -33,12 +33,13 @@ public:
 
 private:
     static constexpr int kDeltaCount = 5;
-    static const int kDeltaOptions[kDeltaCount];
+    static const int kDeltaOptionsDown[kDeltaCount];
+    static const int kDeltaOptionsUp[kDeltaCount];
     static constexpr int kNumActions = kDeltaCount * kDeltaCount;
     static constexpr int kNumFeatures = 5;
 
-    static constexpr float kAlpha = 0.1f;
-    static constexpr float kGamma = 0.9f;
+    static constexpr float kAlpha = 0.4f;
+    static constexpr float kGamma = 0.95f;
     static constexpr float kEpsilonStart = 1.0f;
     static constexpr float kEpsilonMin = 0.1f;
     static constexpr float kEpsilonDecay = 0.9995f;

@@ -1,7 +1,8 @@
 #include "Training.h"
 #include <string.h>
 
-const int Training::kDeltaOptions[Training::kDeltaCount] = { -40, -15, 0, 15, 40 };
+const int Training::kDeltaOptionsDown[Training::kDeltaCount] = { -60, -30, 0, 30, 60 };
+const int Training::kDeltaOptionsUp[Training::kDeltaCount] = { -20, -10, 0, 10, 20 };
 
 Training::Training()
     : trainingActive(false),
@@ -224,8 +225,8 @@ void Training::decodeAction(int actionIndex, int &deltaDown, int &deltaUp) const
 {
     int downIndex = actionIndex / kDeltaCount;
     int upIndex = actionIndex % kDeltaCount;
-    deltaDown = kDeltaOptions[downIndex];
-    deltaUp = kDeltaOptions[upIndex];
+    deltaDown = kDeltaOptionsDown[downIndex];
+    deltaUp = kDeltaOptionsUp[upIndex];
 }
 
 float Training::computeReward(float deltaDistanceCm, float avgSpeedCms, float avgAccelerationMps2) const
