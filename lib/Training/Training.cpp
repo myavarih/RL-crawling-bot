@@ -1,8 +1,8 @@
 #include "Training.h"
 #include <string.h>
 
-const int Training::kDeltaOptionsDown[Training::kDeltaCount] = { -60, -30, 0, 30, 60 };
-const int Training::kDeltaOptionsUp[Training::kDeltaCount] = { -20, -10, 0, 10, 20 };
+const int Training::kTargetOptionsDown[Training::kDownActionCount] = { 140, 130, 120, 110, 100 };
+const int Training::kTargetOptionsUp[Training::kUpActionCount] = { 0, 15, 30, 45, 60, 75, 90 };
 
 Training::Training()
     : trainingActive(false),
@@ -45,8 +45,8 @@ Training::StepResult Training::step(float deltaDistanceCm, float avgSpeedCms, fl
 {
     StepResult result;
     result.actionIndex = 0;
-    result.deltaDown = 0;
-    result.deltaUp = 0;
+    result.targetDownAngle = 0;
+    result.targetUpAngle = 0;
     result.reward = 0.0f;
 
     if (!trainingActive)
@@ -71,9 +71,9 @@ Training::StepResult Training::step(float deltaDistanceCm, float avgSpeedCms, fl
     }
 
     int actionIndex = selectAction(features);
-    int deltaDown = 0;
-    int deltaUp = 0;
-    decodeAction(actionIndex, deltaDown, deltaUp);
+    int targetDownAngle = 0;
+    int targetUpAngle = 0;
+    decodeAction(actionIndex, targetDownAngle, targetUpAngle);
     decayEpsilon();
 
     memcpy(lastFeatures, features, sizeof(lastFeatures));
@@ -81,8 +81,8 @@ Training::StepResult Training::step(float deltaDistanceCm, float avgSpeedCms, fl
     hasLastStep = true;
 
     result.actionIndex = actionIndex;
-    result.deltaDown = deltaDown;
-    result.deltaUp = deltaUp;
+    result.targetDownAngle = targetDownAngle;
+    result.targetUpAngle = targetUpAngle;
     result.reward = reward;
 
     return result;
@@ -221,12 +221,12 @@ void Training::decayEpsilon()
     }
 }
 
-void Training::decodeAction(int actionIndex, int &deltaDown, int &deltaUp) const
+void Training::decodeAction(int actionIndex, int &targetDownAngle, int &targetUpAngle) const
 {
-    int downIndex = actionIndex / kDeltaCount;
-    int upIndex = actionIndex % kDeltaCount;
-    deltaDown = kDeltaOptionsDown[downIndex];
-    deltaUp = kDeltaOptionsUp[upIndex];
+    int downIndex = actionIndex / kUpActionCount;
+    int upIndex = actionIndex % kUpActionCount;
+    targetDownAngle = kTargetOptionsDown[downIndex];
+    targetUpAngle = kTargetOptionsUp[upIndex];
 }
 
 float Training::computeReward(float deltaDistanceCm, float avgSpeedCms, float avgAccelerationMps2) const

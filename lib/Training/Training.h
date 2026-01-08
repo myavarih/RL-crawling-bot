@@ -8,8 +8,8 @@ public:
     struct StepResult
     {
         int actionIndex;
-        int deltaDown;
-        int deltaUp;
+        int targetDownAngle;
+        int targetUpAngle;
         float reward;
     };
 
@@ -32,10 +32,11 @@ public:
     void resetModel();
 
 private:
-    static constexpr int kDeltaCount = 5;
-    static const int kDeltaOptionsDown[kDeltaCount];
-    static const int kDeltaOptionsUp[kDeltaCount];
-    static constexpr int kNumActions = kDeltaCount * kDeltaCount;
+    static constexpr int kDownActionCount = 5;
+    static constexpr int kUpActionCount = 7;
+    static const int kTargetOptionsDown[kDownActionCount];
+    static const int kTargetOptionsUp[kUpActionCount];
+    static constexpr int kNumActions = kDownActionCount * kUpActionCount;
     static constexpr int kNumFeatures = 5;
 
     static constexpr float kAlpha = 0.4f;
@@ -69,7 +70,7 @@ private:
     float computeMaxQ(const float *features) const;
     int selectAction(const float *features);
     void decayEpsilon();
-    void decodeAction(int actionIndex, int &deltaDown, int &deltaUp) const;
+    void decodeAction(int actionIndex, int &targetDownAngle, int &targetUpAngle) const;
     float computeReward(float deltaDistanceCm, float avgSpeedCms, float avgAccelerationMps2) const;
 };
 

@@ -227,20 +227,18 @@ void loop()
         {
             Serial.print("Action: ");
             Serial.print(stepResult.actionIndex);
-            Serial.print(" dDown: ");
-            Serial.print(stepResult.deltaDown);
-            Serial.print(" dUp: ");
-            Serial.print(stepResult.deltaUp);
+            Serial.print(" tDown: ");
+            Serial.print(stepResult.targetDownAngle);
+            Serial.print(" tUp: ");
+            Serial.print(stepResult.targetUpAngle);
             Serial.print(" reward: ");
             Serial.println(stepResult.reward, 4);
 
             // Reset before applying next action so movement is measured in the next interval.
             ahrs.resetMeasurement();
 
-            int targetDown = servoControl.getCurrentDownAngle() + stepResult.deltaDown;
-            int targetUp = servoControl.getCurrentUpAngle() + stepResult.deltaUp;
-            servoControl.moveDownSmooth(targetDown);
-            servoControl.moveUpSmooth(targetUp);
+            servoControl.moveDownSmooth(stepResult.targetDownAngle);
+            servoControl.moveUpSmooth(stepResult.targetUpAngle);
         }
         else
         {
