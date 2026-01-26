@@ -7,79 +7,108 @@
 #include <HealthCheck.h>
 
 // Pin definitions
-const uint8_t SERVO_PIN_DOWN = 16; // P1 on board
-const uint8_t SERVO_PIN_UP = 15;   // P2 on board
+const uint8_t SERVO_PIN_DOWN = 16;
+const uint8_t SERVO_PIN_UP = 15;
 
 // Global objects
 Display display;
 AHRS ahrs;
 ServoControl servoControl(SERVO_PIN_DOWN, SERVO_PIN_UP);
-Network *network; // Heap allocation needed for initialization order with display
+Network *network;
 Training training;
 HealthCheck healthCheck(&display, &ahrs, &servoControl);
+
+// Interval tracking for training display
+static unsigned long lastMeasurement = 0;
+static float lastPosX = 0.0f;
+static float lastPosY = 0.0f;
+static float lastPosZ = 0.0f;
+static float speedSumCms = 0.0f;
+static float accelSumMps2 = 0.0f;
+static uint32_t sampleCount = 0;
+
+static void resetIntervalTracking(unsigned long now)
+{
+    lastMeasurement = now;
+    lastPosX = ahrs.getPositionX();
+    lastPosY = ahrs.getPositionY();
+    lastPosZ = ahrs.getPositionZ();
+    speedSumCms = 0.0f;
+    accelSumMps2 = 0.0f;
+    sampleCount = 0;
+}
 
 void setup()
 {
     Serial.begin(115200);
     delay(1000);
 
-    // Initialize Display
     display.begin();
     display.clear();
     display.print("RL Robot V2", 0, 0);
     display.setCursor(0, 16);
-    display.print("Initializing...");
+    display.print("Booting...");
+    display.refresh();
     delay(1000);
 
-    // Initialize Network
     network = new Network(&display);
     network->begin();
     network->startOTATask();
 
-    // Display robot info
+    int robotNum = network->getRobotNumber();
     display.clear();
-    display.print("Robot #", 0, 0);
-    display.print(network->getRobotNumber());
+    display.print("Robot ID:", 0, 0);
+    display.print(robotNum, 70, 0);
     display.setCursor(0, 16);
     display.print("Setup...");
+    display.refresh();
     delay(1000);
 
-    // Initialize AHRS
     display.clear();
     display.print("Init AHRS...", 0, 0);
     if (ahrs.begin())
     {
         display.setCursor(0, 16);
         display.print("AHRS OK");
+        display.refresh();
     }
     else
     {
         display.setCursor(0, 16);
-        display.print("AHRS Failed!");
+        display.print("AHRS FAIL");
+        display.refresh();
+        while (1)
+            ; // Stop if sensor fails
     }
-    delay(1000);
+    delay(500);
 
-    // Initialize Servos
     display.clear();
     display.print("Init Servos...", 0, 0);
     servoControl.begin();
     display.setCursor(0, 16);
     display.print("Servos OK");
+    display.refresh();
+    delay(500);
+
+    display.clear();
+    display.print("Calibrating...", 0, 0);
+    display.setCursor(0, 16);
+    display.print("Keep Still!");
+    display.refresh();
+    Serial.println("Calibrating...");
+    ahrs.calibrate();
+    delay(500);
+
+    display.clear();
+    display.print("Setup Complete", 0, 0);
+    display.refresh();
     delay(1000);
 
-    // Initialize Training
     training.begin();
     training.startTraining();
 
-    // Setup complete
-    display.clear();
-    display.print("Setup Complete", 0, 0);
-    delay(2000);
-
-    // Run health check
     healthCheck.run();
 
-    // Phase 1 demo: Hello World + bye-bye wave
     display.clear();
     display.setCursor(0, 0);
     display.print("Hello World");
@@ -106,99 +135,80 @@ void setup()
     servoControl.moveUpSmooth(90, 8);
     delay(500);
 
-    // Reset measurement for interval tracking
-    ahrs.resetMeasurement();
+    ahrs.resetPosition();
+    resetIntervalTracking(millis());
 }
 
 void loop()
 {
-    // Update AHRS
     ahrs.update();
 
-    // ===== MODE 1: Real-time continuous display =====
-    // Uncomment this section to show current instantaneous values
-    /*
-    display.clear();
-
-    // Line 1: Speed (cm/s)
-    display.setCursor(0, 0);
-    display.print("Spd: ");
-    display.print(ahrs.getSpeed() * 100, 1);
-    display.print(" cm/s");
-
-    // Line 2: Acceleration (m/s^2)
-    display.setCursor(0, 12);
-    display.print("Acc: ");
-    display.print(ahrs.getAccelMagnitude(), 2);
-    display.print(" m/s2");
-
-    // Line 3: Displacement X (cm)
-    display.setCursor(0, 24);
-    display.print("X: ");
-    display.print(ahrs.getDisplacementX() * 100, 1);
-    display.print(" cm");
-
-    // Line 4: Displacement Y (cm)
-    display.setCursor(0, 36);
-    display.print("Y: ");
-    display.print(ahrs.getDisplacementY() * 100, 1);
-    display.print(" cm");
-
-    display.refresh();
-    delay(1000);
-    */
-
-    // ===== MODE 2: Interval measurement (every 2 seconds) =====
-    // This shows average movement parameters since last measurement
-    static unsigned long lastMeasurement = 0;
     unsigned long currentTime = millis();
+    if (lastMeasurement == 0)
+    {
+        resetIntervalTracking(currentTime);
+    }
 
-    if (currentTime - lastMeasurement >= 500)
-    { // Every 0.5 seconds
-        lastMeasurement = currentTime;
+    float speedCms = ahrs.getSpeed() * 100.0f;
+    float accelX = ahrs.getLinearAccelX();
+    float accelY = ahrs.getLinearAccelY();
+    float accelZ = ahrs.getLinearAccelZ();
+    float accelMag = sqrt(accelX * accelX + accelY * accelY + accelZ * accelZ);
 
-        // Get measurement data
-        AHRS::MovementSnapshot measurement = ahrs.getMeasurement();
+    speedSumCms += speedCms;
+    accelSumMps2 += accelMag;
+    ++sampleCount;
+
+    float deltaTime = (currentTime - lastMeasurement) / 1000.0f;
+    if (deltaTime >= 0.5f)
+    {
+        float posX = ahrs.getPositionX();
+        float posY = ahrs.getPositionY();
+        float posZ = ahrs.getPositionZ();
+
+        float dX = posX - lastPosX;
+        float dY = posY - lastPosY;
+        float dZ = posZ - lastPosZ;
+        float deltaDistanceCm = sqrt(dX * dX + dY * dY + dZ * dZ) * 100.0f;
+
+        float avgSpeedCms = sampleCount ? (speedSumCms / sampleCount) : 0.0f;
+        float avgAccel = sampleCount ? (accelSumMps2 / sampleCount) : 0.0f;
+
         bool actionChosen = false;
         Training::StepResult stepResult = {};
 
         if (training.isTraining())
         {
             stepResult = training.step(
-                measurement.deltaDistance,
-                measurement.avgSpeed,
-                measurement.avgAcceleration,
+                deltaDistanceCm,
+                avgSpeedCms,
+                avgAccel,
                 servoControl.getCurrentDownAngle(),
                 servoControl.getCurrentUpAngle());
             actionChosen = true;
         }
 
-        // Display the interval data
         display.clear();
         const uint8_t lineHeight = 10;
 
-        // Line 1: Distance moved in interval (cm)
         display.setCursor(0, 0);
         display.print("Dist: ");
-        display.print(String(measurement.deltaDistance, 1));
+        display.print(String(deltaDistanceCm, 1));
         display.print(" cm");
 
-        // Line 2: Average speed in interval (cm/s)
         display.setCursor(0, lineHeight);
         display.print("Spd: ");
-        display.print(String(measurement.avgSpeed, 1));
+        display.print(String(avgSpeedCms, 1));
         display.print(" cm/s");
 
-        // Line 3: Average acceleration in interval (m/s^2)
         display.setCursor(0, lineHeight * 2);
         display.print("Acc: ");
-        display.print(String(measurement.avgAcceleration, 2));
+        display.print(String(avgAccel, 2));
         display.print(" m/s2");
 
-        // Line 4: Time interval
         display.setCursor(0, lineHeight * 3);
         display.print("Time: ");
-        display.print(String(measurement.deltaTime, 1));
+        display.print(String(deltaTime, 1));
         display.print(" s");
 
         if (actionChosen)
@@ -214,13 +224,12 @@ void loop()
 
         display.refresh();
 
-        // Print to serial for debugging
         Serial.print("Distance: ");
-        Serial.print(measurement.deltaDistance);
+        Serial.print(deltaDistanceCm);
         Serial.print(" cm, Speed: ");
-        Serial.print(measurement.avgSpeed);
+        Serial.print(avgSpeedCms);
         Serial.print(" cm/s, Accel: ");
-        Serial.print(measurement.avgAcceleration);
+        Serial.print(avgAccel);
         Serial.println(" m/s2");
 
         if (actionChosen)
@@ -234,16 +243,11 @@ void loop()
             Serial.print(" reward: ");
             Serial.println(stepResult.reward, 4);
 
-            // Reset before applying next action so movement is measured in the next interval.
-            ahrs.resetMeasurement();
-
             servoControl.moveDownSmooth(stepResult.targetDownAngle);
             servoControl.moveUpSmooth(stepResult.targetUpAngle);
         }
-        else
-        {
-            ahrs.resetMeasurement();
-        }
+
+        resetIntervalTracking(currentTime);
     }
 
     // TODO: Implement main loop logic

@@ -11,7 +11,7 @@ void HealthCheck::run()
     display->setCursor(0, 0);
     display->print("Health Check");
     display->refresh();
-    delay(1000);
+    delay(500);
 
     // Check AHRS
     display->clear();
@@ -32,7 +32,7 @@ void HealthCheck::run()
     display->print(" P:");
     display->print((int)ahrs->getPitch());
     display->refresh();
-    delay(1000);
+    delay(500);
 
     // Test servos
     display->clear();
@@ -40,14 +40,14 @@ void HealthCheck::run()
     display->print("Testing Servos");
     display->refresh();
     servoControl->setTestPosition();
-    delay(1000);
+    delay(500);
 
     servoControl->setInitialPosition();
     display->clear();
     display->setCursor(0, 0);
     display->print("Servos Reset");
     display->refresh();
-    delay(1000);
+    delay(500);
 
     display->clear();
     display->setCursor(0, 0);
@@ -55,6 +55,6 @@ void HealthCheck::run()
     display->setCursor(0, 16);
     display->print("Complete");
     display->refresh();
-    delay(1500);
+    delay(500);
     display->clear();
 }

@@ -4,6 +4,8 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <MPU9250.h>
+#include <math.h>
+
 
 class AHRS
 {
@@ -12,89 +14,73 @@ public:
     ~AHRS();
     bool begin();
     void update();
+    void calibrate();
 
     // Motion detection
     bool isMoving();
-    float getDisplacementX();
-    float getDisplacementY();
-    float getDisplacementZ();
-    void resetDisplacement();
+    void resetPosition();
+
+    // Position (m)
+    float getPositionX() { return position[0]; }
+    float getPositionY() { return position[1]; }
+    float getPositionZ() { return position[2]; }
 
     // Velocity (m/s)
-    float getVelocityX();
-    float getVelocityY();
-    float getVelocityZ();
-    float getSpeed(); // Total velocity magnitude
+    float getVelocityX() { return velocity[0]; }
+    float getVelocityY() { return velocity[1]; }
+    float getVelocityZ() { return velocity[2]; }
+    float getSpeed() { return sqrt(velocity[0] * velocity[0] + velocity[1] * velocity[1] + velocity[2] * velocity[2]); }
 
-    // Total acceleration magnitude (m/s^2)
-    float getAccelMagnitude();
-
-    // Measurement snapshot for tracking changes
-    struct MovementSnapshot
-    {
-        float deltaDistance;   // Total distance moved (cm)
-        float avgSpeed;        // Average speed (cm/s)
-        float avgAcceleration; // Average acceleration (m/s^2)
-        float deltaTime;       // Time elapsed (seconds)
-    };
-
-    // Get movement parameters since last snapshot
-    MovementSnapshot getMeasurement();
-    void resetMeasurement();
+    // Linear acceleration (m/s^2) - gravity removed
+    float getLinearAccelX() { return linearAccel[0]; }
+    float getLinearAccelY() { return linearAccel[1]; }
+    float getLinearAccelZ() { return linearAccel[2]; }
 
     // Orientation (Euler angles)
-    float getRoll();
-    float getPitch();
-    float getYaw();
+    float getRoll() { return initialized ? mpu->getRoll() : 0; }
+    float getPitch() { return initialized ? mpu->getPitch() : 0; }
+    float getYaw() { return initialized ? mpu->getYaw() : 0; }
 
-    // Accelerometer data (m/s^2)
-    float getAccelX();
-    float getAccelY();
-    float getAccelZ();
+    // Accelerometer data (g)
+    float getAccelX() { return initialized ? mpu->getAccX() * G_CONST : 0; }
+    float getAccelY() { return initialized ? mpu->getAccY() * G_CONST : 0; }
+    float getAccelZ() { return initialized ? mpu->getAccZ() * G_CONST : 0; }
 
     // Gyroscope data (deg/s)
-    float getGyroX();
-    float getGyroY();
-    float getGyroZ();
+    float getGyroX() { return initialized ? mpu->getGyroX() : 0; }
+    float getGyroY() { return initialized ? mpu->getGyroY() : 0; }
+    float getGyroZ() { return initialized ? mpu->getGyroZ() : 0; }
 
     // Magnetometer data (uT)
-    float getMagX();
-    float getMagY();
-    float getMagZ();
+    float getMagX() { return initialized ? mpu->getMagX() : 0; }
+    float getMagY() { return initialized ? mpu->getMagY() : 0; }
+    float getMagZ() { return initialized ? mpu->getMagZ() : 0; }
 
     // Quaternion
-    float getQuatW();
-    float getQuatX();
-    float getQuatY();
-    float getQuatZ();
+    float getQuatW() { return initialized ? mpu->getQuaternionW() : 1; }
+    float getQuatX() { return initialized ? mpu->getQuaternionX() : 0; }
+    float getQuatY() { return initialized ? mpu->getQuaternionY() : 0; }
+    float getQuatZ() { return initialized ? mpu->getQuaternionZ() : 0; }
 
     // Temperature (Celsius)
-    float getTemperature();
-
-    // Calibration
-    void calibrateAccelGyro();
-    void calibrateMag();
-    bool isCalibrated();
+    float getTemperature() { return initialized ? mpu->getTemperature() : 0; }
 
 private:
     MPU9250 *mpu;
     bool initialized;
-    bool calibrated;
-
-    // For displacement tracking
-    float velocityX, velocityY, velocityZ;
-    float displacementX, displacementY, displacementZ;
+    bool isStatic;
+    unsigned long stationaryStartTime;
     unsigned long lastUpdateTime;
 
-    // For measurement snapshots
-    float lastSnapshotX, lastSnapshotY, lastSnapshotZ;
-    unsigned long lastSnapshotTime;
-    float speedSum;
-    float accelSum;
-    int sampleCount;
+    float velocity[3];    // m/s
+    float position[3];    // m
+    float linearAccel[3]; // m/s^2 (gravity removed)
 
-    // Motion threshold
-    static constexpr float MOTION_THRESHOLD = 0.1; // m/s^2
+    // Constants
+    static constexpr float G_CONST = 9.80665f;                // m/s^2
+    static constexpr float MOTION_THRESHOLD = 0.1f;          // m/s^2 - linear accel threshold
+    static constexpr float GYRO_THRESHOLD = 10.0f;           // deg/s - rotation threshold
+    static constexpr unsigned long STATIONARY_TIME_MS = 200; // ms - time to confirm stationary
 };
 
 #endif // AHRS_H

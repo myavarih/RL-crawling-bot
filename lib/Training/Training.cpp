@@ -1,8 +1,8 @@
 #include "Training.h"
 #include <string.h>
 
-const int Training::kTargetOptionsDown[Training::kDownActionCount] = { 140, 130, 120, 110, 100 };
-const int Training::kTargetOptionsUp[Training::kUpActionCount] = { 0, 15, 30, 45, 60, 75, 90 };
+const int Training::kTargetOptionsDown[Training::kDownActionCount] = {140, 130, 120, 110, 100};
+const int Training::kTargetOptionsUp[Training::kUpActionCount] = {0, 15, 30, 45, 60, 75, 90};
 
 Training::Training()
     : trainingActive(false),
@@ -43,11 +43,7 @@ bool Training::isTraining()
 Training::StepResult Training::step(float deltaDistanceCm, float avgSpeedCms, float avgAccelerationMps2,
                                     int downAngleDeg, int upAngleDeg)
 {
-    StepResult result;
-    result.actionIndex = 0;
-    result.targetDownAngle = 0;
-    result.targetUpAngle = 0;
-    result.reward = 0.0f;
+    StepResult result = {};
 
     if (!trainingActive)
     {
@@ -90,25 +86,21 @@ Training::StepResult Training::step(float deltaDistanceCm, float avgSpeedCms, fl
 
 void Training::executeLearnedBehavior()
 {
-    // TODO: Implement learned behavior execution
     Serial.println("Executing learned behavior (implementation pending)");
 }
 
 bool Training::hasLearnedBehavior()
 {
-    // TODO: Implement check for learned behavior
     return modelLoaded;
 }
 
 void Training::saveModel()
 {
-    // TODO: Implement model saving
     Serial.println("Saving model (implementation pending)");
 }
 
 void Training::loadModel()
 {
-    // TODO: Implement model loading
     Serial.println("Loading model (implementation pending)");
     modelLoaded = false;
 }

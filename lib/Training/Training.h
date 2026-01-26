@@ -15,18 +15,16 @@ public:
 
     Training();
     void begin();
-    
-    // Training methods - to be implemented
+
     void startTraining();
     void stopTraining();
     bool isTraining();
-    StepResult step(float deltaDistanceCm, float avgSpeedCms, float avgAccelerationMps2, int downAngleDeg, int upAngleDeg);
+    StepResult step(float deltaDistanceCm, float avgSpeedCms, float avgAccelerationMps2,
+                    int downAngleDeg, int upAngleDeg);
     
-    // Learning methods - to be implemented
     void executeLearnedBehavior();
     bool hasLearnedBehavior();
     
-    // Data management - to be implemented
     void saveModel();
     void loadModel();
     void resetModel();
