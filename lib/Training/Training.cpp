@@ -1,5 +1,23 @@
 #include "Training.h"
+#include <FS.h>
+#include <SPIFFS.h>
 #include <string.h>
+
+namespace
+{
+    const char kModelPath[] = "/training.bin";
+    const uint32_t kModelMagic = 0x524C4D31; // "RLM1"
+    const uint32_t kModelVersion = 1;
+
+    struct ModelHeader
+    {
+        uint32_t magic;
+        uint32_t version;
+        uint32_t actionCount;
+        uint32_t featureCount;
+        uint32_t payloadSize;
+    };
+}
 
 const int Training::kTargetOptionsDown[Training::kDownActionCount] = {140, 130, 120, 110, 100};
 const int Training::kTargetOptionsUp[Training::kUpActionCount] = {0, 15, 30, 45, 60, 75, 90};
@@ -7,6 +25,7 @@ const int Training::kTargetOptionsUp[Training::kUpActionCount] = {0, 15, 30, 45,
 Training::Training()
     : trainingActive(false),
       modelLoaded(false),
+      fsReady(false),
       hasLastStep(false),
       lastAction(0),
       currentEpsilon(kEpsilonStart)
@@ -18,6 +37,11 @@ void Training::begin()
 {
     randomSeed(micros());
     resetWeights();
+    fsReady = SPIFFS.begin(true);
+    if (!fsReady)
+    {
+        Serial.println("Training FS mount failed");
+    }
     Serial.println("Training module initialized");
 }
 
@@ -84,6 +108,31 @@ Training::StepResult Training::step(float deltaDistanceCm, float avgSpeedCms, fl
     return result;
 }
 
+Training::StepResult Training::infer(float deltaDistanceCm, float avgSpeedCms, float avgAccelerationMps2,
+                                     int downAngleDeg, int upAngleDeg)
+{
+    StepResult result = {};
+    if (!modelLoaded)
+    {
+        return result;
+    }
+
+    float features[kNumFeatures];
+    buildFeatures(deltaDistanceCm, avgSpeedCms, avgAccelerationMps2, downAngleDeg, upAngleDeg, features);
+
+    int actionIndex = selectBestAction(features);
+    int targetDownAngle = 0;
+    int targetUpAngle = 0;
+    decodeAction(actionIndex, targetDownAngle, targetUpAngle);
+
+    result.actionIndex = actionIndex;
+    result.targetDownAngle = targetDownAngle;
+    result.targetUpAngle = targetUpAngle;
+    result.reward = computeReward(deltaDistanceCm, avgSpeedCms, avgAccelerationMps2);
+
+    return result;
+}
+
 void Training::executeLearnedBehavior()
 {
     Serial.println("Executing learned behavior (implementation pending)");
@@ -96,21 +145,136 @@ bool Training::hasLearnedBehavior()
 
 void Training::saveModel()
 {
-    Serial.println("Saving model (implementation pending)");
+    if (!fsReady)
+    {
+        Serial.println("Model save skipped (filesystem unavailable)");
+        modelLoaded = false;
+        return;
+    }
+
+    File file = SPIFFS.open(kModelPath, FILE_WRITE);
+    if (!file)
+    {
+        Serial.println("Failed to open model file for writing");
+        modelLoaded = false;
+        return;
+    }
+
+    ModelHeader header = {};
+    header.magic = kModelMagic;
+    header.version = kModelVersion;
+    header.actionCount = kNumActions;
+    header.featureCount = kNumFeatures;
+    header.payloadSize = sizeof(weights);
+
+    size_t headerBytes = file.write(reinterpret_cast<const uint8_t *>(&header), sizeof(header));
+    size_t dataBytes = file.write(reinterpret_cast<const uint8_t *>(weights), sizeof(weights));
+    file.close();
+
+    if (headerBytes != sizeof(header) || dataBytes != sizeof(weights))
+    {
+        Serial.println("Failed to write training model");
+        modelLoaded = false;
+        return;
+    }
+
+    Serial.println("Training model saved");
+    modelLoaded = true;
 }
 
-void Training::loadModel()
+bool Training::modelFileExists()
 {
-    Serial.println("Loading model (implementation pending)");
-    modelLoaded = false;
+    if (!fsReady)
+    {
+        return false;
+    }
+
+    return SPIFFS.exists(kModelPath);
+}
+
+bool Training::loadModel()
+{
+    if (!fsReady)
+    {
+        Serial.println("Model load skipped (filesystem unavailable)");
+        modelLoaded = false;
+        return false;
+    }
+
+    if (!SPIFFS.exists(kModelPath))
+    {
+        Serial.println("No training model file found");
+        modelLoaded = false;
+        return false;
+    }
+
+    File file = SPIFFS.open(kModelPath, FILE_READ);
+    if (!file)
+    {
+        Serial.println("Failed to open model file for reading");
+        modelLoaded = false;
+        return false;
+    }
+
+    if (file.size() < (sizeof(ModelHeader) + sizeof(weights)))
+    {
+        Serial.println("Training model file is incomplete");
+        file.close();
+        modelLoaded = false;
+        return false;
+    }
+
+    ModelHeader header = {};
+    size_t headerBytes = file.read(reinterpret_cast<uint8_t *>(&header), sizeof(header));
+    if (headerBytes != sizeof(header))
+    {
+        Serial.println("Failed to read model header");
+        file.close();
+        modelLoaded = false;
+        return false;
+    }
+
+    if (header.magic != kModelMagic || header.version != kModelVersion ||
+        header.actionCount != kNumActions || header.featureCount != kNumFeatures ||
+        header.payloadSize != sizeof(weights))
+    {
+        Serial.println("Training model header mismatch");
+        file.close();
+        modelLoaded = false;
+        return false;
+    }
+
+    size_t dataBytes = file.read(reinterpret_cast<uint8_t *>(weights), sizeof(weights));
+    file.close();
+
+    if (dataBytes != sizeof(weights))
+    {
+        Serial.println("Failed to read model weights");
+        modelLoaded = false;
+        return false;
+    }
+
+    hasLastStep = false;
+    modelLoaded = true;
+    Serial.println("Training model loaded");
+    return true;
 }
 
 void Training::resetModel()
 {
     resetWeights();
-    Serial.println("Resetting model (implementation pending)");
+    if (fsReady && SPIFFS.exists(kModelPath))
+    {
+        SPIFFS.remove(kModelPath);
+    }
+    Serial.println("Training model reset");
     modelLoaded = false;
     hasLastStep = false;
+}
+
+bool Training::isEpsilonMin() const
+{
+    return currentEpsilon <= kEpsilonMin;
 }
 
 void Training::resetWeights()
@@ -186,6 +350,11 @@ int Training::selectAction(const float *features)
         return random(0, kNumActions);
     }
 
+    return selectBestAction(features);
+}
+
+int Training::selectBestAction(const float *features) const
+{
     float bestQ = computeQ(0, features);
     int bestAction = 0;
     for (int action = 1; action < kNumActions; ++action)

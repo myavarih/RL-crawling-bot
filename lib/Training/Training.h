@@ -21,13 +21,17 @@ public:
     bool isTraining();
     StepResult step(float deltaDistanceCm, float avgSpeedCms, float avgAccelerationMps2,
                     int downAngleDeg, int upAngleDeg);
+    StepResult infer(float deltaDistanceCm, float avgSpeedCms, float avgAccelerationMps2,
+                     int downAngleDeg, int upAngleDeg);
+    bool modelFileExists();
     
     void executeLearnedBehavior();
     bool hasLearnedBehavior();
     
     void saveModel();
-    void loadModel();
+    bool loadModel();
     void resetModel();
+    bool isEpsilonMin() const;
 
 private:
     static constexpr int kDownActionCount = 5;
@@ -54,6 +58,7 @@ private:
 
     bool trainingActive;
     bool modelLoaded;
+    bool fsReady;
     bool hasLastStep;
     int lastAction;
     float currentEpsilon;
@@ -67,6 +72,7 @@ private:
     float computeQ(int actionIndex, const float *features) const;
     float computeMaxQ(const float *features) const;
     int selectAction(const float *features);
+    int selectBestAction(const float *features) const;
     void decayEpsilon();
     void decodeAction(int actionIndex, int &targetDownAngle, int &targetUpAngle) const;
     float computeReward(float deltaDistanceCm, float avgSpeedCms, float avgAccelerationMps2) const;
