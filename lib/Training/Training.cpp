@@ -60,6 +60,10 @@ Training::StepResult Training::step(float deltaDistanceCm, float avgSpeedCms, fl
         float lastQ = computeQ(lastAction, lastFeatures);
         float tdError = reward + (kGamma * maxQ) - lastQ;
 
+        kAlpha = 1 / kNumActions;
+        if (kAlpha < kAlphaMin) {
+            kAlpha = kAlphaMin;
+        }
         for (int i = 0; i < kNumFeatures; ++i)
         {
             weights[lastAction][i] += kAlpha * tdError * lastFeatures[i];
@@ -80,6 +84,8 @@ Training::StepResult Training::step(float deltaDistanceCm, float avgSpeedCms, fl
     result.targetDownAngle = targetDownAngle;
     result.targetUpAngle = targetUpAngle;
     result.reward = reward;
+
+    kNumSteps++;
 
     return result;
 }

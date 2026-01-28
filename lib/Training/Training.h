@@ -37,25 +37,27 @@ private:
     static constexpr int kNumActions = kDownActionCount * kUpActionCount;
     static constexpr int kNumFeatures = 5;
 
-    static constexpr float kAlpha = 0.4f;
     static constexpr float kGamma = 0.95f;
+    static constexpr float kAlphaMin = 0.001f;
     static constexpr float kEpsilonStart = 1.0f;
     static constexpr float kEpsilonMin = 0.1f;
     static constexpr float kEpsilonDecay = 0.9995f;
-
+    
     static constexpr float kDistScale = 10.0f;
     static constexpr float kSpeedScale = 10.0f;
     static constexpr float kAccelScale = 5.0f;
     static constexpr float kAngleScale = 180.0f;
-
+    
     static constexpr float kRewardDistWeight = 1.0f;
     static constexpr float kRewardSpeedWeight = 1.0f;
     static constexpr float kRewardAccelWeight = 1.0f;
-
+    
     bool trainingActive;
     bool modelLoaded;
     bool hasLastStep;
     int lastAction;
+    int kNumSteps = 0;
+    float kAlpha = 1.0f;
     float currentEpsilon;
     float lastFeatures[kNumFeatures];
     float weights[kNumActions][kNumFeatures];
