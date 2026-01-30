@@ -62,7 +62,9 @@ Training::StepResult Training::step(float deltaDistanceCm, float avgSpeedCms, fl
         float lastQ = computeQ(lastState, lastAction);
         float tdError = reward + (kGamma * maxQ) - lastQ;
 
-        qTable[lastState][lastAction] += kAlpha * tdError;
+        float alpha = 1.0f / (1.0f + static_cast<float>(visitCounts[lastState][lastAction]));
+        qTable[lastState][lastAction] += alpha * tdError;
+        visitCounts[lastState][lastAction] += 1;
     }
 
     int actionIndex = selectAction(currentState);
@@ -121,6 +123,7 @@ void Training::resetQTable()
         for (int action = 0; action < kNumActions; ++action)
         {
             qTable[state][action] = 0.0f;
+            visitCounts[state][action] = 0;
         }
     }
 }

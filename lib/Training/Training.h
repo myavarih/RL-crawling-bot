@@ -51,6 +51,7 @@ private:
     int kNumSteps = 0;
     float currentEpsilon;
     float qTable[kNumStates][kNumActions];
+    uint32_t visitCounts[kNumStates][kNumActions];
 
     void resetQTable();
     int getStateIndex(int downAngleDeg, int upAngleDeg) const;
