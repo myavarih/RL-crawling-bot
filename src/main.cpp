@@ -85,6 +85,8 @@ void setup()
     display.clear();
     display.print("Init Servos...", 0, 0);
     servoControl.begin();
+    servoControl.moveDownSmooth(140);
+    servoControl.moveUpSmooth(40);
     display.setCursor(0, 16);
     display.print("Servos OK");
     display.refresh();

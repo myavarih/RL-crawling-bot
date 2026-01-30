@@ -1,23 +1,23 @@
 #include "Training.h"
-#include <string.h>
 
-const int Training::kTargetOptionsDown[Training::kDownActionCount] = {140, 130, 120, 110, 100};
-const int Training::kTargetOptionsUp[Training::kUpActionCount] = {0, 15, 30, 45, 60, 75, 90};
+const int Training::kDownAngleOptions[Training::kDownActionCount] = {140, 150, 160};
+const int Training::kUpAngleOptions[Training::kUpActionCount] = {40, 90, 125};
 
 Training::Training()
     : trainingActive(false),
       modelLoaded(false),
       hasLastStep(false),
       lastAction(0),
+      lastState(0),
       currentEpsilon(kEpsilonStart)
 {
-    resetWeights();
+    resetQTable();
 }
 
 void Training::begin()
 {
     randomSeed(micros());
-    resetWeights();
+    resetQTable();
     Serial.println("Training module initialized");
 }
 
@@ -45,38 +45,33 @@ Training::StepResult Training::step(float deltaDistanceCm, float avgSpeedCms, fl
 {
     StepResult result = {};
 
+    (void)avgSpeedCms;
+    (void)avgAccelerationMps2;
+
     if (!trainingActive)
     {
         return result;
     }
 
-    float features[kNumFeatures];
-    buildFeatures(deltaDistanceCm, avgSpeedCms, avgAccelerationMps2, downAngleDeg, upAngleDeg, features);
-    float reward = computeReward(deltaDistanceCm, avgSpeedCms, avgAccelerationMps2);
+    int currentState = getStateIndex(downAngleDeg, upAngleDeg);
+    float reward = computeReward(deltaDistanceCm);
 
     if (hasLastStep)
     {
-        float maxQ = computeMaxQ(features);
-        float lastQ = computeQ(lastAction, lastFeatures);
+        float maxQ = computeMaxQ(currentState);
+        float lastQ = computeQ(lastState, lastAction);
         float tdError = reward + (kGamma * maxQ) - lastQ;
 
-        kAlpha = 1 / kNumActions;
-        if (kAlpha < kAlphaMin) {
-            kAlpha = kAlphaMin;
-        }
-        for (int i = 0; i < kNumFeatures; ++i)
-        {
-            weights[lastAction][i] += kAlpha * tdError * lastFeatures[i];
-        }
+        qTable[lastState][lastAction] += kAlpha * tdError;
     }
 
-    int actionIndex = selectAction(features);
+    int actionIndex = selectAction(currentState);
     int targetDownAngle = 0;
     int targetUpAngle = 0;
-    decodeAction(actionIndex, targetDownAngle, targetUpAngle);
+    decodeAction(actionIndex, downAngleDeg, upAngleDeg, targetDownAngle, targetUpAngle);
     decayEpsilon();
 
-    memcpy(lastFeatures, features, sizeof(lastFeatures));
+    lastState = currentState;
     lastAction = actionIndex;
     hasLastStep = true;
 
@@ -113,69 +108,65 @@ void Training::loadModel()
 
 void Training::resetModel()
 {
-    resetWeights();
+    resetQTable();
     Serial.println("Resetting model (implementation pending)");
     modelLoaded = false;
     hasLastStep = false;
 }
 
-void Training::resetWeights()
+void Training::resetQTable()
 {
-    for (int action = 0; action < kNumActions; ++action)
+    for (int state = 0; state < kNumStates; ++state)
     {
-        for (int i = 0; i < kNumFeatures; ++i)
+        for (int action = 0; action < kNumActions; ++action)
         {
-            weights[action][i] = 0.0f;
+            qTable[state][action] = 0.0f;
         }
     }
 }
 
-void Training::buildFeatures(float deltaDistanceCm, float avgSpeedCms, float avgAccelerationMps2,
-                             int downAngleDeg, int upAngleDeg, float *featuresOut) const
+int Training::getStateIndex(int downAngleDeg, int upAngleDeg) const
 {
-    featuresOut[0] = normalizeFeature(deltaDistanceCm, kDistScale);
-    featuresOut[1] = normalizeFeature(avgSpeedCms, kSpeedScale);
-    featuresOut[2] = normalizeFeature(avgAccelerationMps2, kAccelScale);
-    featuresOut[3] = normalizeFeature(static_cast<float>(downAngleDeg), kAngleScale);
-    featuresOut[4] = normalizeFeature(static_cast<float>(upAngleDeg), kAngleScale);
+    int downIndex = findDownIndex(downAngleDeg);
+    int upIndex = findUpIndex(upAngleDeg);
+    return (downIndex * kUpActionCount) + upIndex;
 }
 
-float Training::normalizeFeature(float value, float scale) const
+int Training::findDownIndex(int downAngleDeg) const
 {
-    if (scale <= 0.0f)
+    for (int i = 0; i < kDownActionCount; ++i)
     {
-        return 0.0f;
+        if (kDownAngleOptions[i] == downAngleDeg)
+        {
+            return i;
+        }
     }
-
-    float normalized = value / scale;
-    if (normalized > 1.0f)
-    {
-        normalized = 1.0f;
-    }
-    else if (normalized < -1.0f)
-    {
-        normalized = -1.0f;
-    }
-
-    return normalized;
+    return 0;
 }
 
-float Training::computeQ(int actionIndex, const float *features) const
+int Training::findUpIndex(int upAngleDeg) const
 {
-    float sum = 0.0f;
-    for (int i = 0; i < kNumFeatures; ++i)
+    for (int i = 0; i < kUpActionCount; ++i)
     {
-        sum += weights[actionIndex][i] * features[i];
+        if (kUpAngleOptions[i] == upAngleDeg)
+        {
+            return i;
+        }
     }
-    return sum;
+    return 0;
 }
 
-float Training::computeMaxQ(const float *features) const
+float Training::computeQ(int stateIndex, int actionIndex) const
 {
-    float bestQ = computeQ(0, features);
+    return qTable[stateIndex][actionIndex];
+}
+
+float Training::computeMaxQ(int stateIndex) const
+{
+    float bestQ = computeQ(stateIndex, 0);
     for (int action = 1; action < kNumActions; ++action)
     {
-        float qValue = computeQ(action, features);
+        float qValue = computeQ(stateIndex, action);
         if (qValue > bestQ)
         {
             bestQ = qValue;
@@ -184,7 +175,7 @@ float Training::computeMaxQ(const float *features) const
     return bestQ;
 }
 
-int Training::selectAction(const float *features)
+int Training::selectAction(int stateIndex)
 {
     int roll = random(0, 10000);
     if (roll < static_cast<int>(currentEpsilon * 10000.0f))
@@ -192,11 +183,11 @@ int Training::selectAction(const float *features)
         return random(0, kNumActions);
     }
 
-    float bestQ = computeQ(0, features);
+    float bestQ = computeQ(stateIndex, 0);
     int bestAction = 0;
     for (int action = 1; action < kNumActions; ++action)
     {
-        float qValue = computeQ(action, features);
+        float qValue = computeQ(stateIndex, action);
         if (qValue > bestQ)
         {
             bestQ = qValue;
@@ -219,19 +210,26 @@ void Training::decayEpsilon()
     }
 }
 
-void Training::decodeAction(int actionIndex, int &targetDownAngle, int &targetUpAngle) const
+void Training::decodeAction(int actionIndex, int currentDownAngle, int currentUpAngle,
+                            int &targetDownAngle, int &targetUpAngle) const
 {
-    int downIndex = actionIndex / kUpActionCount;
-    int upIndex = actionIndex % kUpActionCount;
-    targetDownAngle = kTargetOptionsDown[downIndex];
-    targetUpAngle = kTargetOptionsUp[upIndex];
+    if (actionIndex < kDownActionCount)
+    {
+        targetDownAngle = kDownAngleOptions[actionIndex];
+        targetUpAngle = currentUpAngle;
+        return;
+    }
+
+    int upIndex = actionIndex - kDownActionCount;
+    if (upIndex >= kUpActionCount)
+    {
+        upIndex = 0;
+    }
+    targetDownAngle = currentDownAngle;
+    targetUpAngle = kUpAngleOptions[upIndex];
 }
 
-float Training::computeReward(float deltaDistanceCm, float avgSpeedCms, float avgAccelerationMps2) const
+float Training::computeReward(float deltaDistanceCm) const
 {
-    float dist = normalizeFeature(deltaDistanceCm, kDistScale);
-    float speed = normalizeFeature(avgSpeedCms, kSpeedScale);
-    float accel = normalizeFeature(avgAccelerationMps2, kAccelScale);
-
-    return (kRewardDistWeight * dist) + (kRewardSpeedWeight * speed) + (kRewardAccelWeight * accel);
+    return deltaDistanceCm;
 }
