@@ -106,6 +106,25 @@ void setup()
     display.refresh();
     delay(1000);
 
+    Serial.println("Angle sweep start");
+    const unsigned long angleSweepDelayMs = 1000;
+    for (int downIndex = 0; downIndex < training.getDownActionCount(); ++downIndex)
+    {
+        for (int upIndex = 0; upIndex < training.getUpActionCount(); ++upIndex)
+        {
+            int downAngle = training.getDownAngleOption(downIndex);
+            int upAngle = training.getUpAngleOption(upIndex);
+            Serial.print("Angles - Down: ");
+            Serial.print(downAngle);
+            Serial.print(" Up: ");
+            Serial.println(upAngle);
+            servoControl.moveDownSmooth(downAngle);
+            servoControl.moveUpSmooth(upAngle);
+            delay(angleSweepDelayMs);
+        }
+    }
+    Serial.println("Angle sweep done");
+
     training.begin();
     training.startTraining();
 
@@ -137,6 +156,8 @@ void setup()
     servoControl.moveUpSmooth(90, 8);
     delay(500);
 
+    servoControl.moveUpSmooth(40);
+    servoControl.moveDownSmooth(140);
     ahrs.resetPosition();
     resetIntervalTracking(millis());
 }
@@ -209,19 +230,27 @@ void loop()
         display.print(" m/s2");
 
         display.setCursor(0, lineHeight * 3);
-        display.print("Time: ");
-        display.print(String(deltaTime, 1));
+        display.print("Episodes: ");
+        display.print(training.getTotalEpisodes());
+
+        display.setCursor(0, lineHeight * 4);
+        display.print("Total: ");
+        display.print(String(training.getTotalTrainingSeconds(), 1));
         display.print(" s");
 
+        display.setCursor(0, lineHeight * 5);
+        display.print("Act: ");
         if (actionChosen)
         {
-            display.setCursor(0, lineHeight * 4);
-            display.print("Act: ");
-            display.print(stepResult.actionIndex);
-
-            display.setCursor(0, lineHeight * 5);
-            display.print("Reward: ");
+            bool isDown = training.isDownAction(stepResult.actionIndex);
+            display.print(isDown ? "Down " : "Up ");
+            display.print(isDown ? stepResult.targetDownAngle : stepResult.targetUpAngle);
+            display.print(" R:");
             display.print(String(stepResult.reward, 3));
+        }
+        else
+        {
+            display.print("-");
         }
 
         display.refresh();
@@ -236,15 +265,6 @@ void loop()
 
         if (actionChosen)
         {
-            Serial.print("Action: ");
-            Serial.print(stepResult.actionIndex);
-            Serial.print(" tDown: ");
-            Serial.print(stepResult.targetDownAngle);
-            Serial.print(" tUp: ");
-            Serial.print(stepResult.targetUpAngle);
-            Serial.print(" reward: ");
-            Serial.println(stepResult.reward, 4);
-
             servoControl.moveDownSmooth(stepResult.targetDownAngle);
             servoControl.moveUpSmooth(stepResult.targetUpAngle);
         }

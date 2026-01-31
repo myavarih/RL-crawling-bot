@@ -9,6 +9,9 @@ Training::Training()
       hasLastStep(false),
       lastAction(0),
       lastState(0),
+      totalEpisodes(0),
+      trainingStartMs(0),
+      accumulatedTrainingMs(0),
       currentEpsilon(kEpsilonStart)
 {
     resetQTable();
@@ -27,11 +30,18 @@ void Training::startTraining()
     trainingActive = true;
     hasLastStep = false;
     currentEpsilon = kEpsilonStart;
+    totalEpisodes = 0;
+    accumulatedTrainingMs = 0;
+    trainingStartMs = millis();
 }
 
 void Training::stopTraining()
 {
     Serial.println("Training stopped");
+    if (trainingActive)
+    {
+        accumulatedTrainingMs += millis() - trainingStartMs;
+    }
     trainingActive = false;
 }
 
@@ -82,9 +92,66 @@ Training::StepResult Training::step(float deltaDistanceCm, float avgSpeedCms, fl
     result.targetUpAngle = targetUpAngle;
     result.reward = reward;
 
-    kNumSteps++;
+    totalEpisodes++;
 
     return result;
+}
+
+uint32_t Training::getTotalEpisodes() const
+{
+    return totalEpisodes;
+}
+
+float Training::getTotalTrainingSeconds() const
+{
+    unsigned long totalMs = accumulatedTrainingMs;
+    if (trainingActive)
+    {
+        totalMs += millis() - trainingStartMs;
+    }
+    return static_cast<float>(totalMs) / 1000.0f;
+}
+
+const char *Training::getActionLabel(int actionIndex) const
+{
+    if (actionIndex < 0 || actionIndex >= kNumActions)
+    {
+        return "Unknown";
+    }
+    return (actionIndex < kDownActionCount) ? "Down" : "Up";
+}
+
+bool Training::isDownAction(int actionIndex) const
+{
+    return actionIndex >= 0 && actionIndex < kDownActionCount;
+}
+
+int Training::getDownActionCount() const
+{
+    return kDownActionCount;
+}
+
+int Training::getUpActionCount() const
+{
+    return kUpActionCount;
+}
+
+int Training::getDownAngleOption(int index) const
+{
+    if (index < 0 || index >= kDownActionCount)
+    {
+        return kDownAngleOptions[0];
+    }
+    return kDownAngleOptions[index];
+}
+
+int Training::getUpAngleOption(int index) const
+{
+    if (index < 0 || index >= kUpActionCount)
+    {
+        return kUpAngleOptions[0];
+    }
+    return kUpAngleOptions[index];
 }
 
 void Training::executeLearnedBehavior()

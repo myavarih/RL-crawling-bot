@@ -21,6 +21,14 @@ public:
     bool isTraining();
     StepResult step(float deltaDistanceCm, float avgSpeedCms, float avgAccelerationMps2,
                     int downAngleDeg, int upAngleDeg);
+    uint32_t getTotalEpisodes() const;
+    float getTotalTrainingSeconds() const;
+    const char *getActionLabel(int actionIndex) const;
+    bool isDownAction(int actionIndex) const;
+    int getDownActionCount() const;
+    int getUpActionCount() const;
+    int getDownAngleOption(int index) const;
+    int getUpAngleOption(int index) const;
     
     void executeLearnedBehavior();
     bool hasLearnedBehavior();
@@ -48,7 +56,9 @@ private:
     bool hasLastStep;
     int lastAction;
     int lastState;
-    int kNumSteps = 0;
+    uint32_t totalEpisodes;
+    unsigned long trainingStartMs;
+    unsigned long accumulatedTrainingMs;
     float currentEpsilon;
     float qTable[kNumStates][kNumActions];
     uint32_t visitCounts[kNumStates][kNumActions];
