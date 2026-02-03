@@ -18,6 +18,9 @@ Network *network;
 Training training;
 HealthCheck healthCheck(&display, &ahrs, &servoControl);
 
+// Phase 3 training controls
+static const bool kTrainingEnabled = true;
+
 // Interval tracking for training display
 static unsigned long lastMeasurement = 0;
 static float lastPosX = 0.0f;
@@ -26,6 +29,7 @@ static float lastPosZ = 0.0f;
 static float speedSumCms = 0.0f;
 static float accelSumMps2 = 0.0f;
 static uint32_t sampleCount = 0;
+static bool modelSaved = false;
 
 static void resetIntervalTracking(unsigned long now)
 {
@@ -132,7 +136,38 @@ void setup()
     display.println("Angle sweep done");
 
     training.begin();
-    training.startTraining();
+    if (kTrainingEnabled)
+    {
+        training.startTraining();
+        modelSaved = false;
+    }
+    else
+    {
+        if (!training.modelFileExists())
+        {
+            display.clear();
+            display.print("Model missing", 0, 0);
+            display.setCursor(0, 16);
+            display.print("Fallback train");
+            display.refresh();
+            delay(1500);
+
+            training.startTraining();
+            modelSaved = false;
+        }
+        else if (!training.loadModel())
+        {
+            display.clear();
+            display.print("Model load err", 0, 0);
+            display.setCursor(0, 16);
+            display.print("Fallback train");
+            display.refresh();
+            delay(1500);
+
+            training.startTraining();
+            modelSaved = false;
+        }
+    }
 
     healthCheck.run();
 
@@ -209,6 +244,22 @@ void loop()
         if (training.isTraining())
         {
             stepResult = training.step(
+                deltaDistanceCm,
+                avgSpeedCms,
+                avgAccel,
+                servoControl.getCurrentDownAngle(),
+                servoControl.getCurrentUpAngle());
+            actionChosen = true;
+            if (!modelSaved && training.isEpsilonMin())
+            {
+                training.stopTraining();
+                training.saveModel();
+                modelSaved = true;
+            }
+        }
+        else if (training.hasLearnedBehavior())
+        {
+            stepResult = training.infer(
                 deltaDistanceCm,
                 avgSpeedCms,
                 avgAccel,

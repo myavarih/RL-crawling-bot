@@ -21,6 +21,8 @@ public:
     bool isTraining();
     StepResult step(float deltaDistanceCm, float avgSpeedCms, float avgAccelerationMps2,
                     int downAngleDeg, int upAngleDeg);
+    StepResult infer(float deltaDistanceCm, float avgSpeedCms, float avgAccelerationMps2,
+                     int downAngleDeg, int upAngleDeg);
     uint32_t getTotalEpisodes() const;
     float getTotalTrainingSeconds() const;
     const char *getActionLabel(int actionIndex) const;
@@ -29,13 +31,15 @@ public:
     int getUpActionCount() const;
     int getDownAngleOption(int index) const;
     int getUpAngleOption(int index) const;
+    bool modelFileExists();
     
     void executeLearnedBehavior();
     bool hasLearnedBehavior();
-    
+
     void saveModel();
-    void loadModel();
+    bool loadModel();
     void resetModel();
+    bool isEpsilonMin() const;
 
 private:
     static constexpr int kDownActionCount = 3;
@@ -53,6 +57,7 @@ private:
     
     bool trainingActive;
     bool modelLoaded;
+    bool fsReady;
     bool hasLastStep;
     int lastAction;
     int lastState;
@@ -70,6 +75,7 @@ private:
     float computeQ(int stateIndex, int actionIndex) const;
     float computeMaxQ(int stateIndex) const;
     int selectAction(int stateIndex);
+    int selectBestAction(int stateIndex) const;
     void decayEpsilon();
     void decodeAction(int actionIndex, int currentDownAngle, int currentUpAngle,
                       int &targetDownAngle, int &targetUpAngle) const;
