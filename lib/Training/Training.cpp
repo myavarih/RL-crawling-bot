@@ -1,6 +1,6 @@
 #include "Training.h"
 
-const int Training::kDownAngleOptions[Training::kDownActionCount] = {140, 150, 160};
+const int Training::kDownAngleOptions[Training::kDownActionCount] = {140, 90, 45};
 const int Training::kUpAngleOptions[Training::kUpActionCount] = {40, 90, 125};
 
 Training::Training()
