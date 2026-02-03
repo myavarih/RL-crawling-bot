@@ -110,13 +110,14 @@ void setup()
     display.refresh();
     display.setCursor(0, 0);
     display.print("Angle sweep start");
-    const unsigned long angleSweepDelayMs = 1000;
+    const unsigned long angleSweepDelayMs = 3000;
     for (int downIndex = 0; downIndex < training.getDownActionCount(); ++downIndex)
     {
         for (int upIndex = 0; upIndex < training.getUpActionCount(); ++upIndex)
         {
             display.setCursor(0, 10);
             display.refresh();
+            display.clear();
             int downAngle = training.getDownAngleOption(downIndex);
             int upAngle = training.getUpAngleOption(upIndex);
             display.print("Angles - Down: ");
