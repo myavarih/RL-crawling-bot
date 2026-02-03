@@ -106,24 +106,29 @@ void setup()
     display.refresh();
     delay(1000);
 
-    Serial.println("Angle sweep start");
+    display.clear();
+    display.refresh();
+    display.setCursor(0, 0);
+    display.print("Angle sweep start");
     const unsigned long angleSweepDelayMs = 1000;
     for (int downIndex = 0; downIndex < training.getDownActionCount(); ++downIndex)
     {
         for (int upIndex = 0; upIndex < training.getUpActionCount(); ++upIndex)
         {
+            display.setCursor(0, 10);
+            display.refresh();
             int downAngle = training.getDownAngleOption(downIndex);
             int upAngle = training.getUpAngleOption(upIndex);
-            Serial.print("Angles - Down: ");
-            Serial.print(downAngle);
-            Serial.print(" Up: ");
-            Serial.println(upAngle);
+            display.print("Angles - Down: ");
+            display.print(downAngle);
+            display.print(" Up: ");
+            display.print(upAngle);
             servoControl.moveDownSmooth(downAngle);
             servoControl.moveUpSmooth(upAngle);
             delay(angleSweepDelayMs);
         }
     }
-    Serial.println("Angle sweep done");
+    display.println("Angle sweep done");
 
     training.begin();
     training.startTraining();
